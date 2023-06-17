@@ -58,18 +58,28 @@ public class Main {
             Set<Integer> team = new HashSet<>();
             Iterator<Integer> it = allNodes.iterator();
             Integer startNode = it.next();
+            Set<Integer> brak = new HashSet<>();
+            Set<Integer> commonVertex = new HashSet<>();
 
             nodeStack.push(startNode);
             allNodes.remove(startNode);
+            boolean first = true;
+            Set<Integer> currentEdgeList = graph.get(nodeStack.peek());
             while (!nodeStack.empty()) {
-
                 boolean end = false;
-                Set<Integer> currentEdgeList = graph.get(nodeStack.peek());
+                boolean badVertex = false;
+//                Set<Integer> currentEdgeList = graph.get(nodeStack.peek());
+                if (first) {
+                    commonVertex = new HashSet<>(currentEdgeList);
+                    commonVertex.retainAll(allNodes); // удалить уже использованные ранее узлы
+                    first = false;
+                }
                 tempTeam.add(nodeStack.peek());
-
                 if (currentEdgeList.size() > 0) {
+                    end = true;
                     boolean hasItem = false;
                     Iterator<Integer> iterator = currentEdgeList.iterator();
+                    Integer goodVertex = null;
                     while (iterator.hasNext()) {
                         Integer next = iterator.next();
                         if (allNodes.contains(next)) {
@@ -77,18 +87,50 @@ public class Main {
                             if (!contains(graph.get(next), tempTeam)) {
                                 continue;
                             }
+                            // вершина не рассматривалась ранее в этом цикле как плохая
+                            if (brak.contains(next)) {
+                                continue;
+                            }
+                            if (!commonVertex.contains(next)) {
+                                continue;
+                            }
                             nodeStack.push(next);
                             allNodes.remove(next);
+                            goodVertex = next;
                             hasItem = true;
                             break;
                         }
                     }
-                    end = !hasItem;
+                    // формирование списка общих вершин
+                    if (hasItem) {
+                        end = false;
+                        currentEdgeList = graph.get(goodVertex);
+                        commonVertex.remove(goodVertex);
+                        if (!commonVertex.isEmpty()) {
+                            Set<Integer> copy = new HashSet<>(commonVertex);
+                            copy.retainAll(currentEdgeList);
+                            if (copy.isEmpty()) {
+                                // у вершины нет других общих вершин
+                                badVertex = true;
+                                end = true;
+                            } else {
+                                // обновление списка общих вершин (оставить только пересечения)
+                                commonVertex.retainAll(currentEdgeList);
+                            }
+                        }
+                    }
                 } else {
                     end = true;
                 }
                 if (end) {
-                    team.add(nodeStack.pop());
+                    if (badVertex) {
+                        brak.add(nodeStack.peek());
+                        allNodes.add(nodeStack.peek());
+                        tempTeam.remove(nodeStack.pop());
+                        currentEdgeList = graph.get(nodeStack.peek());
+                    } else {
+                        team.add(nodeStack.pop());
+                    }
                 }
             }
             teams.add((HashSet<Integer>) team);
